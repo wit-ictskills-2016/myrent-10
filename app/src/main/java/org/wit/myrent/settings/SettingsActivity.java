@@ -1,7 +1,6 @@
 package org.wit.myrent.settings;
 
 import android.os.Bundle;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Menu;
 
@@ -11,8 +10,6 @@ import org.wit.myrent.settings.SettingsFragment;
 
 public class SettingsActivity extends AppCompatActivity
 {
-
-  ActionBar actionBar;
 
   @Override
   protected void onCreate(Bundle savedInstanceState)
@@ -24,7 +21,6 @@ public class SettingsActivity extends AppCompatActivity
       getFragmentManager().beginTransaction().add(android.R.id.content, fragment, fragment.getClass().getSimpleName())
           .commit();
     }
-    actionBar = getSupportActionBar();
   }
 
   @Override
