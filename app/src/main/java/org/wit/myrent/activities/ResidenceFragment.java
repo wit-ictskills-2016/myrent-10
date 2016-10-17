@@ -10,11 +10,17 @@ import org.wit.myrent.app.MyRentApp;
 import org.wit.myrent.models.Portfolio;
 import org.wit.myrent.models.Residence;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.support.v4.app.Fragment;
+import android.support.annotation.NonNull;
+import android.support.v13.app.FragmentCompat;
+import android.support.v4.app.ActivityCompat;
+import android.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -40,6 +46,7 @@ public class ResidenceFragment extends Fragment implements TextWatcher,
     OnCheckedChangeListener,
     OnClickListener,
     DatePickerDialog.OnDateSetListener
+
 {
   public static final String EXTRA_RESIDENCE_ID = "myrent.RESIDENCE_ID";
 
@@ -58,6 +65,7 @@ public class ResidenceFragment extends Fragment implements TextWatcher,
 
   MyRentApp app;
 
+  Intent requestContactIntent;
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -129,15 +137,19 @@ public class ResidenceFragment extends Fragment implements TextWatcher,
       return;
     }
 
-    switch (requestCode)
-    {
+    switch (requestCode) {
       case REQUEST_CONTACT:
-        String name = ContactHelper.getContact(getActivity(), data);
-        emailAddress = ContactHelper.getEmail(getActivity(), data);
-        tenantButton.setText(name + " : " + emailAddress);
-        residence.tenant = name;
+        requestContactIntent = data;
+        checkContactsReadPermission();
         break;
     }
+  }
+
+  private void readContact() {
+    String name = ContactHelper.getContact(getActivity(), requestContactIntent);
+    emailAddress = ContactHelper.getEmail(getActivity(), requestContactIntent);
+    tenantButton.setText(name + " : " + emailAddress);
+    residence.tenant = name;
   }
 
   @Override
@@ -170,7 +182,9 @@ public class ResidenceFragment extends Fragment implements TextWatcher,
         break;
 
       case R.id.tenant :
-        selectContact(getActivity(), REQUEST_CONTACT);
+        //selectContact(getActivity(), REQUEST_CONTACT);
+        Intent i = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+        startActivityForResult(i, REQUEST_CONTACT);
         break;
 
       case R.id.residence_reportButton :
@@ -186,5 +200,50 @@ public class ResidenceFragment extends Fragment implements TextWatcher,
     Date date = new GregorianCalendar(year, monthOfYear, dayOfMonth).getTime();
     residence.date = date.getTime();
     dateButton.setText(residence.getDateString());
+  }
+
+  /**
+   * http://stackoverflow.com/questions/32714787/android-m-permissions-onrequestpermissionsresult-not-being-called
+   * This is an override of FragmentCompat.onRequestPermissionsResult
+   *
+   * @param requestCode Example REQUEST_CONTACT
+   * @param permissions String array of permissions requested.
+   * @param grantResults int array of results for permissions request.
+   */
+  @Override
+  public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    switch (requestCode) {
+      case REQUEST_CONTACT: {
+        // If request is cancelled, the result arrays are empty.
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+          readContact();
+        }
+        break;
+      }
+    }
+  }
+
+  /**
+   * Bespoke method to check if read contacts permission exists.
+   * If it exists then the contact sought is read.
+   * Otherwise, the method FragmentCompat.request permissions is invoked and
+   * The response is via the callback onRequestPermissionsResult.
+   * In onRequestPermissionsResult, on successfully being granted permission then the sought contact is read.
+   */
+  private void checkContactsReadPermission() {
+    if (ContextCompat.checkSelfPermission(getActivity(),
+        Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+
+      readContact();
+    }
+    else {
+      // Invoke callback to request user-granted permission
+      FragmentCompat.requestPermissions(
+          this,
+          new String[]{Manifest.permission.READ_CONTACTS},
+          REQUEST_CONTACT);
+    }
   }
 }
